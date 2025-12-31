@@ -1,62 +1,78 @@
 import { useEffect, useState } from "react";
 import DataTable from 'react-data-table-component';
-import { getDocuments, uploadDocument, deleteDocument, downloadDocument } from "../api/documents";
+import api from "../api/axios";
 
 export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
 
   const loadDocuments = async () => {
+    console.log('Attempting to load documents from: GET /documents');
     try {
-      const res = await getDocuments();
-      console.log('Raw documents data:', res.data);
+      const response = await api.get("/documents");
+      console.log('Success! Full response:', response);
+      console.log('Response data:', response.data);
       
-      // Transform data to ensure consistent field names
-      const transformedData = res.data.map(doc => {
-        console.log('Processing document:', doc);
-        return {
-          id: doc.id,
-          name: doc.name || doc.filename || doc.document_name || doc.file_name || 'Unknown Document',
-          size: doc.size || doc.file_size || doc.fileSize || doc.content_length || doc.length || 
-                formatFileSize(doc.size_bytes) || formatFileSize(doc.file_size_bytes) || 
-                (doc.metadata && doc.metadata.size) || '1.0 MB',
-          uploadDate: formatDate(doc.uploadDate || doc.upload_date || doc.created_at || doc.createdAt || 
-                     doc.timestamp || doc.date_created) || new Date().toISOString().split('T')[0],
-          status: doc.status || doc.processing_status || doc.state || 'Processed'
-        };
-      });
+      if (Array.isArray(response.data)) {
+        console.log('=== DOCUMENT RESPONSE DEBUG ===');
+        response.data.forEach((doc, index) => {
+          console.log(`Document ${index} FULL OBJECT:`, JSON.stringify(doc, null, 2));
+          console.log(`Document ${index} KEYS:`, Object.keys(doc));
+          console.log(`Document ${index} VALUES:`, Object.values(doc));
+        });
+        console.log('=== END DEBUG ===');
+      }
       
-      console.log('Transformed documents:', transformedData);
-      setDocuments(transformedData);
+      setDocuments(response.data || []);
+      setError(null);
     } catch (error) {
-      console.error('Failed to load documents:', error);
-      alert('Failed to load documents');
+      console.error('Documents API failed:', error);
+      setError(`Failed to load documents: ${error.response?.status || 'Network Error'}`);
+      setDocuments([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (!bytes) return null;
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(1)} MB`;
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return null;
-    try {
-      const date = new Date(dateStr);
-      return date.toISOString().split('T')[0];
-    } catch {
-      return dateStr;
     }
   };
 
   useEffect(() => {
     loadDocuments();
   }, []);
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await api.delete(`/documents/${id}`);
+        await loadDocuments();
+        alert('Document deleted successfully');
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert(`Delete failed: ${error.response?.status || 'Network Error'}`);
+      }
+    }
+  };
+
+  const handleDownload = async (id, name) => {
+    try {
+      const response = await api.get(`/documents/${id}/download`, { 
+        responseType: 'blob' 
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name || `document-${id}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert(`Download failed: ${error.response?.status || 'Network Error'}`);
+    }
+  };
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
@@ -65,108 +81,81 @@ export default function Documents() {
       return;
     }
     
+    console.log('Attempting to upload file to: POST /documents/upload');
     setUploading(true);
+    
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
       
-      await uploadDocument(formData);
+      const response = await api.post("/documents/upload", formData);
+      console.log('Upload success:', response.data);
+      
       setUploadFile(null);
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) fileInput.value = '';
       await loadDocuments();
       alert('File uploaded successfully');
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Failed to upload file');
+      alert(`Upload failed: ${error.response?.status || 'Network Error'} - ${error.response?.data?.detail || error.message}`);
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this document?')) {
-      try {
-        console.log('Deleting document:', id);
-        const response = await deleteDocument(id);
-        console.log('Delete response:', response);
-        
-        // Reload documents from backend to get updated list
-        await loadDocuments();
-        alert('Document deleted successfully');
-      } catch (error) {
-        console.error('Delete failed:', error);
-        
-        // Check if it's a real backend error or just fallback to mock
-        if (error.response) {
-          // Real backend error
-          if (error.response.status === 401) {
-            alert('Authentication failed. Please login again.');
-          } else if (error.response.status === 404) {
-            alert('Document not found on server.');
-            await loadDocuments(); // Refresh list anyway
-          } else {
-            alert(`Failed to delete document: ${error.response.data?.message || error.message}`);
-          }
-        } else {
-          // Network error or backend unavailable - using mock data
-          setDocuments(prev => prev.filter(doc => doc.id !== id));
-          alert('Document deleted (backend unavailable)');
-        }
-      }
-    }
-  };
-
-  const handleDownload = async (id, name) => {
-    try {
-      console.log('Downloading document:', id, name);
-      
-      // Create a simple mock download for now
-      const mockContent = `Mock content for document: ${name}`;
-      const blob = new Blob([mockContent], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name || `document-${id}.txt`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      console.log('Download completed');
-    } catch (error) {
-      console.error('Download failed:', error);
-      alert('Download failed: ' + error.message);
     }
   };
 
   const columns = [
     {
       name: 'Document Name',
-      selector: row => row.name,
+      selector: row => row.filename || 'Unknown',
       sortable: true,
       minWidth: '200px',
-      wrap: true,
     },
     {
       name: 'Size',
-      selector: row => row.size,
+      selector: row => {
+        const size = row.file_size;
+        if (size === "Unknown" || size === null || size === undefined) {
+          return 'Unknown';
+        }
+        if (typeof size === 'number') {
+          if (size > 1024 * 1024) {
+            return `${(size / 1024 / 1024).toFixed(1)} MB`;
+          } else if (size > 1024) {
+            return `${(size / 1024).toFixed(1)} KB`;
+          } else {
+            return `${size} bytes`;
+          }
+        }
+        return size.toString();
+      },
       sortable: true,
-      width: '100px',
+      width: '120px',
     },
     {
-      name: 'Upload Date',
-      selector: row => row.uploadDate,
+      name: 'Date',
+      selector: row => {
+        const date = row.uploaded_at;
+        if (!date) {
+          return 'Unknown';
+        }
+        try {
+          return new Date(date).toLocaleDateString();
+        } catch (error) {
+          return date.toString();
+        }
+      },
       sortable: true,
       width: '120px',
     },
     {
       name: 'Status',
-      selector: row => row.status,
+      selector: row => row.status || row.state || 'Active',
       sortable: true,
-      width: '120px',
+      width: '100px',
       cell: row => (
-        <span className={`status-badge ${row.status.toLowerCase().replace(' ', '-')}`}>
-          {row.status}
+        <span className={`status-badge ${(row.status || 'active').toLowerCase()}`}>
+          {row.status || 'Active'}
         </span>
       ),
     },
@@ -177,7 +166,7 @@ export default function Documents() {
         <div className="action-buttons">
           <button 
             className="btn btn-sm btn-primary" 
-            onClick={() => handleDownload(row.id, row.name)}
+            onClick={() => handleDownload(row.id, row.name || row.filename)}
           >
             Download
           </button>
@@ -192,6 +181,33 @@ export default function Documents() {
     },
   ];
 
+  if (error) {
+    return (
+      <div className="container">
+        <div className="card">
+          <div className="page-header">
+            <h2>Document Management</h2>
+          </div>
+          
+          <div style={{padding: '20px', background: '#f8d7da', border: '1px solid #f5c6cb', borderRadius: '4px', margin: '20px 0'}}>
+            <h4>Backend Connection Error</h4>
+            <p><strong>Error:</strong> {error}</p>
+            <p><strong>Required Backend Endpoints:</strong></p>
+            <ul>
+              <li><code>GET /documents</code> - List documents</li>
+              <li><code>POST /documents/upload</code> - Upload files</li>
+              <li><code>DELETE /documents/&#123;id&#125;</code> - Delete documents</li>
+            </ul>
+            <p>Please ensure your backend server is running on <code>http://127.0.0.1:8000</code> with these endpoints implemented.</p>
+            <button className="btn btn-primary" onClick={loadDocuments}>
+              Retry Connection
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <div className="card">
@@ -201,12 +217,11 @@ export default function Documents() {
         
         <div className="upload-section">
           <h3>Upload Document</h3>
-          <form onSubmit={handleFileUpload} className="upload-form">
+          <form onSubmit={handleFileUpload}>
             <div className="file-input-wrapper">
               <input
                 type="file"
                 onChange={(e) => setUploadFile(e.target.files[0])}
-                accept=".pdf,.doc,.docx,.txt"
                 className="file-input"
                 disabled={uploading}
               />
@@ -235,7 +250,7 @@ export default function Documents() {
           highlightOnHover
           striped
           responsive
-          noDataComponent="No documents found"
+          noDataComponent="No documents found. Upload a document to get started."
         />
       </div>
     </div>
