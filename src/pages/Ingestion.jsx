@@ -4,6 +4,8 @@ import api from "../api/axios";
 export default function Ingestion() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [selectedDocument, setSelectedDocument] = useState("");
   const [stats, setStats] = useState({
     totalDocuments: 0,
     processedToday: 0,
@@ -19,10 +21,11 @@ export default function Ingestion() {
     try {
       // Try to get documents first to show ingestion options
       const documentsResponse = await api.get("/documents");
-      const documents = documentsResponse.data || [];
+      const documentsData = documentsResponse.data || [];
+      setDocuments(documentsData);
       
       // Create jobs from documents with status checks
-      const jobPromises = documents.slice(0, 5).map(async (doc) => {
+      const jobPromises = documentsData.slice(0, 5).map(async (doc) => {
         try {
           const statusResponse = await api.get(`/ingestion/status/${doc.id}`);
           return {
@@ -48,9 +51,9 @@ export default function Ingestion() {
       setJobs(jobs);
       
       // Calculate stats from documents
-      const totalDocs = documents.length;
+      const totalDocs = documentsData.length;
       const today = new Date().toDateString();
-      const processedToday = documents.filter(doc => 
+      const processedToday = documentsData.filter(doc => 
         new Date(doc.uploaded_at).toDateString() === today
       ).length;
       const failedJobs = jobs.filter(job => job.status === 'failed').length;
@@ -76,12 +79,16 @@ export default function Ingestion() {
   };
 
   const startIngestion = async () => {
+    if (!selectedDocument) {
+      alert("Please select a document to ingest");
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Use the actual backend endpoint format
-      const response = await api.post("/ingestion/trigger/1"); // Using document ID 1 as default
+      const response = await api.post(`/ingestion/trigger/${selectedDocument}`);
       console.log('Ingestion response:', response.data);
-      alert(`Ingestion job started successfully. Job ID: ${response.data.job_id}`);
+      alert(`Ingestion started for document. Job ID: ${response.data.job_id}`);
       await loadIngestionData(); // Refresh data
     } catch (error) {
       console.error("Failed to start ingestion:", error);
@@ -96,13 +103,28 @@ export default function Ingestion() {
       <div className="card">
         <div className="page-header">
           <h2>Data Ingestion</h2>
-          <button 
-            className="btn btn-primary" 
-            onClick={startIngestion}
-            disabled={loading}
-          >
-            {loading ? 'Starting...' : 'Start Ingestion'}
-          </button>
+          <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
+            <select
+              value={selectedDocument}
+              onChange={(e) => setSelectedDocument(e.target.value)}
+              className="form-control"
+              style={{minWidth: '200px'}}
+            >
+              <option value="">Select document...</option>
+              {documents.map((doc) => (
+                <option key={doc.id} value={doc.id}>
+                  {doc.filename}
+                </option>
+              ))}
+            </select>
+            <button 
+              className="btn btn-primary" 
+              onClick={startIngestion}
+              disabled={loading || !selectedDocument}
+            >
+              {loading ? 'Starting...' : 'Start Ingestion'}
+            </button>
+          </div>
         </div>
 
         <div className="ingestion-stats">
