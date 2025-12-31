@@ -54,6 +54,10 @@ The application expects a backend server running on `http://127.0.0.1:8000` with
 - `DELETE /users/{id}` - Delete user
 - `GET /roles` - List roles
 
+### Ingestion
+- `GET /ingestion/status/{id}` - Get ingestion status for document
+- `POST /ingestion/trigger/{id}` - Start ingestion process for document
+
 ## Installation
 
 1. Clone the repository
