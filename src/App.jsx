@@ -7,6 +7,7 @@ import AdminUsers from "./pages/AdminUsers";
 import Documents from "./pages/Documents";
 import Ingestion from "./pages/Ingestion";
 import RAGSearch from "./pages/RAGSearch";
+import Summary from "./pages/Summary";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Navbar from "./components/Navbar";
 
@@ -43,6 +44,10 @@ function AppContent() {
 
 <Route path="/rag" element={
   <ProtectedRoute><RAGSearch /></ProtectedRoute>
+} />
+
+<Route path="/summary" element={
+  <ProtectedRoute><Summary /></ProtectedRoute>
 } />
 
       </Routes>

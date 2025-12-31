@@ -10,7 +10,7 @@ A React-based web application for managing books, documents, and RAG (Retrieval-
 - **RAG Search**: Search through documents using AI-powered retrieval
 - **Admin Users**: Manage users and roles with tabbed interface
 - **Ingestion**: Process and ingest documents for search
-- **Responsive Design**: Mobile-friendly interface with modern styling
+- **Document Summary**: Generate AI-powered summaries of uploaded documents
 
 ## Pages
 
@@ -20,6 +20,7 @@ A React-based web application for managing books, documents, and RAG (Retrieval-
 - `/documents` - Document upload and management
 - `/rag` - RAG search interface
 - `/admin/users` - User and role management
+- `/summary` - Document summary generation
 - `/ingestion` - Document processing
 
 ## Backend API Requirements
@@ -39,6 +40,7 @@ The application expects a backend server running on `http://127.0.0.1:8000` with
 ### Documents
 - `GET /documents` - List documents
 - `POST /documents/upload` - Upload document
+- `POST /documents/{id}/summary` - Generate document summary
 - `DELETE /documents/{id}` - Delete document
 - `GET /documents/{id}/download` - Download document
 

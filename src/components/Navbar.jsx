@@ -69,6 +69,13 @@ export default function Navbar() {
           }}>
             RAG Search
           </Link>
+          <Link to="/summary" style={{
+            color: 'white',
+            textDecoration: 'none',
+            padding: '0.5rem 1rem'
+          }}>
+            Summary
+          </Link>
           <Link to="/admin/users" style={{
             color: 'white',
             textDecoration: 'none',
