@@ -1,42 +1,43 @@
 import { useState } from "react";
+import api from "../api/axios";
 
 export default function RAGSearch() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchResponse, setSearchResponse] = useState(null);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      alert('Please enter a search query');
+      return;
+    }
 
     setLoading(true);
-    // Simulate search - replace with actual API call
-    setTimeout(() => {
-      setResults([
-        {
-          id: 1,
-          title: "Introduction to Machine Learning",
-          content: "Machine learning is a subset of artificial intelligence that focuses on algorithms...",
-          source: "ml_textbook.pdf",
-          score: 0.95
-        },
-        {
-          id: 2,
-          title: "Deep Learning Fundamentals",
-          content: "Deep learning uses neural networks with multiple layers to model and understand...",
-          source: "deep_learning_guide.pdf",
-          score: 0.87
-        },
-        {
-          id: 3,
-          title: "Natural Language Processing",
-          content: "NLP combines computational linguistics with machine learning to help computers...",
-          source: "nlp_handbook.pdf",
-          score: 0.82
-        }
-      ]);
+    setResults([]);
+    setSearchResponse(null);
+
+    try {
+      // Call your exact API: POST /search?query={query}&limit=5
+      const response = await api.post(`/search?query=${encodeURIComponent(query)}&limit=5`);
+      
+      console.log('RAG Search Response:', response.data);
+      setSearchResponse(response.data);
+      setResults(response.data.results || []);
+
+    } catch (error) {
+      console.error('RAG Search failed:', error);
+      if (error.response?.status === 404) {
+        alert('Search endpoint not found. Please check if the backend is running.');
+      } else if (error.response?.status === 500) {
+        alert('Search failed due to server error: ' + (error.response?.data?.detail || error.message));
+      } else {
+        alert('Search failed: ' + (error.response?.data?.detail || error.message));
+      }
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -44,7 +45,7 @@ export default function RAGSearch() {
       <div className="card">
         <div className="page-header">
           <h2>RAG Search</h2>
-          <p>Search through your document knowledge base</p>
+          <p>Search through your book collection using semantic search</p>
         </div>
 
         <form onSubmit={handleSearch} className="search-form">
@@ -52,7 +53,7 @@ export default function RAGSearch() {
             <input
               type="text"
               className="form-control search-input"
-              placeholder="Enter your question or search query..."
+              placeholder="Enter your search query (e.g., genre, author, title)..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -66,20 +67,32 @@ export default function RAGSearch() {
           </div>
         </form>
 
+        {searchResponse && (
+          <div className="search-info">
+            <p><strong>Query:</strong> "{searchResponse.query}"</p>
+            <p><strong>Results found:</strong> {results.length}</p>
+          </div>
+        )}
+
         {results.length > 0 && (
           <div className="search-results">
             <h3>Search Results ({results.length})</h3>
-            {results.map(result => (
-              <div key={result.id} className="result-item">
+            {results.map((result, index) => (
+              <div key={result.book_id || index} className="result-item">
                 <div className="result-header">
-                  <h4>{result.title}</h4>
+                  <h4>{result.metadata.title}</h4>
                   <span className="confidence-score">
-                    Confidence: {(result.score * 100).toFixed(0)}%
+                    Similarity: {(result.similarity_score * 100).toFixed(0)}%
                   </span>
+                </div>
+                <div className="book-details">
+                  <p><strong>Author:</strong> {result.metadata.author}</p>
+                  <p><strong>Genre:</strong> {result.metadata.genre}</p>
+                  <p><strong>Book ID:</strong> {result.metadata.book_id}</p>
                 </div>
                 <p className="result-content">{result.content}</p>
                 <div className="result-footer">
-                  <span className="source">Source: {result.source}</span>
+                  <span className="source">Book ID: {result.book_id}</span>
                 </div>
               </div>
             ))}
@@ -89,7 +102,13 @@ export default function RAGSearch() {
         {loading && (
           <div className="loading-state">
             <div className="spinner"></div>
-            <p>Searching through documents...</p>
+            <p>Searching through book collection...</p>
+          </div>
+        )}
+
+        {!loading && results.length === 0 && query && searchResponse && (
+          <div className="no-results">
+            <p>No results found for "{query}". Try searching for different terms like genre, author names, or book titles.</p>
           </div>
         )}
       </div>

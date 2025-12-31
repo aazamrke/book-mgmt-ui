@@ -58,5 +58,8 @@ export const deleteDocument = (id) => handleApiError(
 
 export const downloadDocument = (id) => handleApiError(
   () => api.get(`/documents/${id}/download`, { responseType: 'blob' }),
-  new Blob(['Mock file content'], { type: 'application/pdf' })
+  (() => {
+    // For mock, return the blob in the expected format
+    return new Blob(['Mock file content for document'], { type: 'application/pdf' });
+  })()
 );

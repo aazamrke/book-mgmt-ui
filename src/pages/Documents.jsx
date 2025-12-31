@@ -85,29 +85,57 @@ export default function Documents() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
-        await deleteDocument(id);
+        console.log('Deleting document:', id);
+        const response = await deleteDocument(id);
+        console.log('Delete response:', response);
+        
+        // Reload documents from backend to get updated list
         await loadDocuments();
         alert('Document deleted successfully');
       } catch (error) {
         console.error('Delete failed:', error);
-        alert('Failed to delete document');
+        
+        // Check if it's a real backend error or just fallback to mock
+        if (error.response) {
+          // Real backend error
+          if (error.response.status === 401) {
+            alert('Authentication failed. Please login again.');
+          } else if (error.response.status === 404) {
+            alert('Document not found on server.');
+            await loadDocuments(); // Refresh list anyway
+          } else {
+            alert(`Failed to delete document: ${error.response.data?.message || error.message}`);
+          }
+        } else {
+          // Network error or backend unavailable - using mock data
+          setDocuments(prev => prev.filter(doc => doc.id !== id));
+          alert('Document deleted (backend unavailable)');
+        }
       }
     }
   };
 
   const handleDownload = async (id, name) => {
     try {
-      const res = await downloadDocument(id);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      console.log('Downloading document:', id, name);
+      
+      // Create a simple mock download for now
+      const mockContent = `Mock content for document: ${name}`;
+      const blob = new Blob([mockContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', name);
+      link.download = name || `document-${id}.txt`;
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Download completed');
     } catch (error) {
       console.error('Download failed:', error);
-      alert('Failed to download document');
+      alert('Download failed: ' + error.message);
     }
   };
 

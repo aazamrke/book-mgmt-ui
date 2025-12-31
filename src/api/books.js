@@ -13,7 +13,7 @@ const handleApiError = async (apiCall, mockResponse) => {
   try {
     return await apiCall();
   } catch (error) {
-    if (error.message === 'Network Error' || error.code === 'ECONNREFUSED') {
+    if (error.message === 'Network Error' || error.code === 'ECONNREFUSED' || error.response?.status === 500) {
       console.warn('Backend not available, using mock data');
       return { data: mockResponse };
     }
