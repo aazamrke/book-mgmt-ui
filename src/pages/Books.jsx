@@ -12,6 +12,7 @@ export default function Books() {
       setBooks(res.data);
     } catch (error) {
       console.error('Failed to load books:', error);
+      alert('Failed to load books. Please check if backend is running.');
     } finally {
       setLoading(false);
     }
@@ -24,11 +25,20 @@ export default function Books() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this book?')) {
       try {
+        console.log('Deleting book with ID:', id);
         await deleteBook(id);
-        loadBooks();
+        console.log('Delete successful, reloading books');
+        await loadBooks();
+        alert('Book deleted successfully');
       } catch (error) {
-        console.error('Delete failed:', error.response?.data || error.message);
-        alert(`Failed to delete book: ${error.response?.status || error.message}`);
+        console.error('Delete failed:', error);
+        if (error.response?.status === 401) {
+          alert('Authentication failed. Please login again.');
+        } else if (error.response?.status === 404) {
+          alert('Book not found.');
+        } else {
+          alert(`Failed to delete book: ${error.response?.data?.message || error.message}`);
+        }
       }
     }
   };

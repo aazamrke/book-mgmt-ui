@@ -48,26 +48,34 @@ export default function Navbar() {
           }}>
             Add Book
           </Link>
-      <Link to="/documents" style={{
+          <Link to="/documents" style={{
             color: 'white',
             textDecoration: 'none',
             padding: '0.5rem 1rem'
-          }}>Documents</Link> |
-      <Link to="/ingestion" style={{
+          }}>
+            Documents
+          </Link>
+          <Link to="/ingestion" style={{
             color: 'white',
             textDecoration: 'none',
             padding: '0.5rem 1rem'
-          }}>Ingestion</Link> |
-      <Link to="/rag" style={{
+          }}>
+            Ingestion
+          </Link>
+          <Link to="/rag" style={{
             color: 'white',
             textDecoration: 'none',
             padding: '0.5rem 1rem'
-          }}>RAG Search</Link> |
-      <Link to="/admin/users" style={{
+          }}>
+            RAG Search
+          </Link>
+          <Link to="/admin/users" style={{
             color: 'white',
             textDecoration: 'none',
             padding: '0.5rem 1rem'
-          }}>Admin</Link>
+          }}>
+            Admin
+          </Link>
           <button 
             onClick={handleLogout}
             style={{
