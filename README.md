@@ -58,6 +58,20 @@ The application expects a backend server running on `http://127.0.0.1:8000` with
 - `GET /ingestion/status/{id}` - Get ingestion status for document
 - `POST /ingestion/trigger/{id}` - Start ingestion process for document
 
+## Docker Deployment
+
+### Build Docker Image
+```bash
+docker build -t book-mgmt-ui .
+```
+
+### Run Docker Container
+```bash
+docker run -p 3000:80 book-mgmt-ui
+```
+
+The application will be available at [http://localhost:3000](http://localhost:3000)
+
 ## Installation
 
 1. Clone the repository
