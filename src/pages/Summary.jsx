@@ -48,7 +48,7 @@ export default function Summary() {
       
       // Mock fallback for development
       if (error.response?.status === 500 || error.response?.status === 404) {
-        const selectedDoc = documents.find(doc => doc.id == selectedDocument);
+        const selectedDoc = documents.find(doc => doc.id === selectedDocument);
         const filename = selectedDoc?.filename || 'document';
         
         // Generate realistic summary based on document type

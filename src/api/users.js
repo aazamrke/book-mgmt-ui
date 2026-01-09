@@ -8,9 +8,8 @@ const mockUsers = [
 ];
 
 const mockRoles = [
-  { id: 1, name: "Admin", description: "Full system access", permissions: ["read", "write", "delete", "admin"] },
-  { id: 2, name: "Editor", description: "Can edit content", permissions: ["read", "write"] },
-  { id: 3, name: "User", description: "Basic user access", permissions: ["read"] }
+  { id: 1, name: "admin", can_read: true, can_write: false, can_delete: false, is_admin: false },
+  { id: 2, name: "user", can_read: true, can_write: false, can_delete: false, is_admin: false }
 ];
 
 let nextUserId = 4;
@@ -21,8 +20,9 @@ const handleApiError = async (apiCall, mockResponse) => {
     return await apiCall();
   } catch (error) {
     if (error.message === 'Network Error' || error.code === 'ECONNREFUSED' || 
-        error.response?.status === 500 || error.response?.status === 403) {
-      console.warn('Backend not available or access denied, using mock data');
+        error.response?.status === 500 || error.response?.status === 404 || 
+        error.response?.status === 403 || error.response?.status === 400) {
+      console.warn('Backend not available or error, using mock data');
       return { data: mockResponse };
     }
     throw error;
@@ -31,25 +31,17 @@ const handleApiError = async (apiCall, mockResponse) => {
 
 // Users API
 export const getUsers = () => handleApiError(
-  () => api.get("/admin/users"),
+  () => api.get("/admin/users/"),
   mockUsers
 );
 
-export const createUser = (userData) => handleApiError(
-  () => api.post("/admin/users", userData),
-  (() => {
-    const newUser = {
-      id: nextUserId++,
-      ...userData,
-      status: 'Active'
-    };
-    mockUsers.push(newUser);
-    return newUser;
-  })()
-);
+export const createUser = (userData) => {
+  console.log('Creating user with data:', userData);
+  return api.post("/admin/users/", userData);
+};
 
 export const updateUser = (id, userData) => handleApiError(
-  () => api.put(`/admin/users/${id}`, userData),
+  () => api.put(`/admin/users/${id}/`, userData),
   (() => {
     const index = mockUsers.findIndex(user => user.id === parseInt(id));
     if (index !== -1) {
@@ -61,7 +53,7 @@ export const updateUser = (id, userData) => handleApiError(
 );
 
 export const deleteUser = (id) => handleApiError(
-  () => api.delete(`/admin/users/${id}`),
+  () => api.delete(`/admin/users/${id}/`),
   (() => {
     const index = mockUsers.findIndex(user => user.id === parseInt(id));
     if (index !== -1) {
@@ -74,21 +66,14 @@ export const deleteUser = (id) => handleApiError(
 
 // Roles API
 export const getRoles = () => handleApiError(
-  () => api.get("/admin/roles"),
+  () => api.get("/admin/users/roles"),
   mockRoles
 );
 
-export const createRole = (roleData) => handleApiError(
-  () => api.post("/admin/roles", roleData),
-  (() => {
-    const newRole = {
-      id: nextRoleId++,
-      ...roleData
-    };
-    mockRoles.push(newRole);
-    return newRole;
-  })()
-);
+export const createRole = (roleData) => {
+  console.log('Creating role with data:', roleData);
+  return api.post("/admin/users/roles", roleData);
+};
 
 export const updateRole = (id, roleData) => handleApiError(
   () => api.put(`/admin/roles/${id}`, roleData),

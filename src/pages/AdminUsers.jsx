@@ -9,8 +9,14 @@ export default function AdminUsers() {
   const [activeTab, setActiveTab] = useState('users');
   const [showAddUserForm, setShowAddUserForm] = useState(false);
   const [showAddRoleForm, setShowAddRoleForm] = useState(false);
-  const [newUser, setNewUser] = useState({ username: '', email: '', role: 'User' });
-  const [newRole, setNewRole] = useState({ name: '', description: '', permissions: [] });
+  const [newUser, setNewUser] = useState({ username: '', password: '', role_names: '' });
+  const [newRole, setNewRole] = useState({ 
+    name: '', 
+    can_read: false, 
+    can_write: false, 
+    can_delete: false, 
+    is_admin: false 
+  });
   const [editingUser, setEditingUser] = useState(null);
 
   const loadUsers = async () => {
@@ -41,20 +47,26 @@ export default function AdminUsers() {
 
   const handleAddUser = async (e) => {
     e.preventDefault();
-    if (!newUser.username || !newUser.email) {
-      alert('Username and email are required');
+    if (!newUser.username || !newUser.password || !newUser.role_names) {
+      alert('Username, password, and role are required');
       return;
     }
 
+    console.log('Attempting to create user:', newUser);
     try {
-      await createUser(newUser);
-      setNewUser({ username: '', email: '', role: 'User' });
+      const userPayload = {
+        ...newUser,
+        role_names: [newUser.role_names] // Convert single role to array
+      };
+      const response = await createUser(userPayload);
+      console.log('User creation response:', response);
+      setNewUser({ username: '', password: '', role_names: '' });
       setShowAddUserForm(false);
       await loadUsers();
       alert('User created successfully');
     } catch (error) {
       console.error('Failed to create user:', error);
-      alert('Failed to create user');
+      alert(`Failed to create user: ${error.response?.data?.detail || error.message}`);
     }
   };
 
@@ -67,13 +79,19 @@ export default function AdminUsers() {
 
     try {
       await createRole(newRole);
-      setNewRole({ name: '', description: '', permissions: [] });
+      setNewRole({ 
+        name: '', 
+        can_read: false, 
+        can_write: false, 
+        can_delete: false, 
+        is_admin: false 
+      });
       setShowAddRoleForm(false);
       await loadRoles();
       alert('Role created successfully');
     } catch (error) {
       console.error('Failed to create role:', error);
-      alert('Failed to create role');
+      alert(`Failed to create role: ${error.response?.data?.detail || error.message}`);
     }
   };
 
@@ -114,7 +132,7 @@ export default function AdminUsers() {
     try {
       await updateUser(editingUser.id, newUser);
       setEditingUser(null);
-      setNewUser({ username: '', email: '', role: 'User' });
+      setNewUser({ username: '', email: '', role: '' });
       setShowAddUserForm(false);
       await loadUsers();
       alert('User updated successfully');
@@ -178,14 +196,44 @@ export default function AdminUsers() {
       sortable: true,
     },
     {
-      name: 'Description',
-      selector: row => row.description,
+      name: 'Can Read',
+      selector: row => row.can_read ? 'Yes' : 'No',
       sortable: true,
+      cell: row => (
+        <span className={`status-badge ${row.can_read ? 'active' : 'inactive'}`}>
+          {row.can_read ? 'Yes' : 'No'}
+        </span>
+      ),
     },
     {
-      name: 'Permissions',
-      selector: row => row.permissions?.join(', ') || 'None',
-      wrap: true,
+      name: 'Can Write',
+      selector: row => row.can_write ? 'Yes' : 'No',
+      sortable: true,
+      cell: row => (
+        <span className={`status-badge ${row.can_write ? 'active' : 'inactive'}`}>
+          {row.can_write ? 'Yes' : 'No'}
+        </span>
+      ),
+    },
+    {
+      name: 'Can Delete',
+      selector: row => row.can_delete ? 'Yes' : 'No',
+      sortable: true,
+      cell: row => (
+        <span className={`status-badge ${row.can_delete ? 'active' : 'inactive'}`}>
+          {row.can_delete ? 'Yes' : 'No'}
+        </span>
+      ),
+    },
+    {
+      name: 'Is Admin',
+      selector: row => row.is_admin ? 'Yes' : 'No',
+      sortable: true,
+      cell: row => (
+        <span className={`status-badge ${row.is_admin ? 'active' : 'inactive'}`}>
+          {row.is_admin ? 'Yes' : 'No'}
+        </span>
+      ),
     },
     {
       name: 'Actions',
@@ -233,7 +281,7 @@ export default function AdminUsers() {
                 className="btn btn-primary" 
                 onClick={() => {
                   setEditingUser(null);
-                  setNewUser({ username: '', email: '', role: 'User' });
+                  setNewUser({ username: '', password: '', role_names: '' });
                   setShowAddUserForm(!showAddUserForm);
                 }}
               >
@@ -257,22 +305,32 @@ export default function AdminUsers() {
                   <div className="form-group">
                     <input
                       className="form-control"
-                      type="email"
-                      placeholder="Email"
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                      type="password"
+                      placeholder="Password"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({...newUser, password: e.target.value})}
                       required
                     />
                   </div>
                   <div className="form-group">
+                    <label>Role:</label>
                     <select
                       className="form-control"
-                      value={newUser.role}
-                      onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+                      value={newUser.role_names}
+                      onChange={(e) => setNewUser({...newUser, role_names: e.target.value})}
+                      required
                     >
-                      {roles.map(role => (
-                        <option key={role.id} value={role.name}>{role.name}</option>
-                      ))}
+                      <option value="">Select a role...</option>
+                      {roles.length > 0 ? (
+                        roles.map(role => (
+                          <option key={role.id} value={role.name}>{role.name}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="admin">admin</option>
+                          <option value="user">user</option>
+                        </>
+                      )}
                     </select>
                   </div>
                   <button type="submit" className="btn btn-primary">
@@ -322,31 +380,41 @@ export default function AdminUsers() {
                     />
                   </div>
                   <div className="form-group">
-                    <input
-                      className="form-control"
-                      placeholder="Description"
-                      value={newRole.description}
-                      onChange={(e) => setNewRole({...newRole, description: e.target.value})}
-                    />
-                  </div>
-                  <div className="form-group">
                     <label>Permissions:</label>
-                    {['read', 'write', 'delete', 'admin'].map(perm => (
-                      <label key={perm} style={{display: 'block', margin: '4px 0'}}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px'}}>
+                      <label style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                         <input
                           type="checkbox"
-                          checked={newRole.permissions.includes(perm)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewRole({...newRole, permissions: [...newRole.permissions, perm]});
-                            } else {
-                              setNewRole({...newRole, permissions: newRole.permissions.filter(p => p !== perm)});
-                            }
-                          }}
+                          checked={newRole.can_read}
+                          onChange={(e) => setNewRole({...newRole, can_read: e.target.checked})}
                         />
-                        {perm}
+                        Can Read
                       </label>
-                    ))}
+                      <label style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <input
+                          type="checkbox"
+                          checked={newRole.can_write}
+                          onChange={(e) => setNewRole({...newRole, can_write: e.target.checked})}
+                        />
+                        Can Write
+                      </label>
+                      <label style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <input
+                          type="checkbox"
+                          checked={newRole.can_delete}
+                          onChange={(e) => setNewRole({...newRole, can_delete: e.target.checked})}
+                        />
+                        Can Delete
+                      </label>
+                      <label style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <input
+                          type="checkbox"
+                          checked={newRole.is_admin}
+                          onChange={(e) => setNewRole({...newRole, is_admin: e.target.checked})}
+                        />
+                        Is Admin
+                      </label>
+                    </div>
                   </div>
                   <button type="submit" className="btn btn-primary">Create Role</button>
                 </form>

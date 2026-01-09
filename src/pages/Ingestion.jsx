@@ -24,23 +24,58 @@ export default function Ingestion() {
       const documentsData = documentsResponse.data || [];
       setDocuments(documentsData);
       
+      // Get today's processed count from backend
+      let processedToday = 0;
+      try {
+        const todayCountResponse = await api.get("/ingestion/today-count");
+        processedToday = todayCountResponse.data.today_processed || 0;
+        console.log('Today processed from API:', processedToday);
+      } catch (error) {
+        console.log('Failed to get today count, will calculate from jobs');
+      }
+      
       // Create jobs from documents with status checks
       const jobPromises = documentsData.slice(0, 5).map(async (doc) => {
         try {
+          console.log(`Checking status for document ${doc.id}`);
           const statusResponse = await api.get(`/ingestion/status/${doc.id}`);
+          console.log(`Status response for doc ${doc.id}:`, statusResponse.data);
+          
+          const status = statusResponse.data.status || 'pending';
+          let progress = 0;
+          
+          switch(status.toLowerCase()) {
+            case 'completed':
+            case 'success':
+              progress = 100;
+              break;
+            case 'running':
+            case 'processing':
+            case 'in_progress':
+              progress = 75;
+              break;
+            case 'failed':
+            case 'error':
+              progress = 0;
+              break;
+            default:
+              progress = 0;
+          }
+          
           return {
             id: doc.id,
             name: `Processing ${doc.filename}`,
-            status: statusResponse.data.status || 'pending',
-            progress: statusResponse.data.status === 'completed' ? 100 : 
-                     statusResponse.data.status === 'running' ? 75 : 0,
+            status: status,
+            progress: progress,
             startTime: new Date(doc.uploaded_at).toLocaleString()
           };
-        } catch {
+        } catch (error) {
+          console.log(`Status check failed for doc ${doc.id}:`, error.response?.status);
+          // If status endpoint doesn't exist or fails, show as not started
           return {
             id: doc.id,
             name: `Processing ${doc.filename}`,
-            status: 'pending',
+            status: 'not_started',
             progress: 0,
             startTime: new Date(doc.uploaded_at).toLocaleString()
           };
@@ -50,13 +85,9 @@ export default function Ingestion() {
       const jobs = await Promise.all(jobPromises);
       setJobs(jobs);
       
-      // Calculate stats from documents
+      // Calculate stats from documents and jobs
       const totalDocs = documentsData.length;
-      const today = new Date().toDateString();
-      const processedToday = documentsData.filter(doc => 
-        new Date(doc.uploaded_at).toDateString() === today
-      ).length;
-      const failedJobs = jobs.filter(job => job.status === 'failed').length;
+      const failedJobs = jobs.filter(job => job.status === 'failed' || job.status === 'error').length;
       
       setStats({ 
         totalDocuments: totalDocs, 

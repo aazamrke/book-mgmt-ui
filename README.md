@@ -56,6 +56,7 @@ The application expects a backend server running on `http://127.0.0.1:8000` with
 
 ### Ingestion
 - `GET /ingestion/status/{id}` - Get ingestion status for document
+- `GET /ingestion/today-count` - Get today's processed document count
 - `POST /ingestion/trigger/{id}` - Start ingestion process for document
 
 ## Docker Deployment
