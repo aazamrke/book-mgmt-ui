@@ -7,8 +7,13 @@ export default function Login() {
   const navigate = useNavigate();
 
   const submit = async () => {
-    await login(form);
-    navigate("/books");
+    try {
+      await login(form);
+      navigate("/books");
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert(error.message || 'Login failed. Please check your credentials.');
+    }
   };
 
   return (

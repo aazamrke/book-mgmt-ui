@@ -37,7 +37,13 @@ export const getUsers = () => handleApiError(
 
 export const createUser = (userData) => {
   console.log('Creating user with data:', userData);
-  return api.post("/admin/users/", userData);
+  return api.post("/admin/users/", userData, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    timeout: 10000 // 10 second timeout
+  });
 };
 
 export const updateUser = (id, userData) => handleApiError(
@@ -75,17 +81,10 @@ export const createRole = (roleData) => {
   return api.post("/admin/users/roles", roleData);
 };
 
-export const updateRole = (id, roleData) => handleApiError(
-  () => api.put(`/admin/roles/${id}`, roleData),
-  (() => {
-    const index = mockRoles.findIndex(role => role.id === parseInt(id));
-    if (index !== -1) {
-      mockRoles[index] = { ...mockRoles[index], ...roleData };
-      return mockRoles[index];
-    }
-    return null;
-  })()
-);
+export const updateRole = (id, roleData) => {
+  console.log('Updating role with data:', roleData);
+  return api.put(`/admin/users/roles/${id}`, roleData);
+};
 
 export const deleteRole = (id) => handleApiError(
   () => api.delete(`/admin/roles/${id}`),

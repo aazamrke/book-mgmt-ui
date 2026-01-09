@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import DataTable from 'react-data-table-component';
-import { getUsers, createUser, deleteUser, updateUser, getRoles, createRole, deleteRole } from "../api/users";
+import { getUsers, createUser, deleteUser, updateUser, getRoles, createRole, deleteRole, updateRole } from "../api/users";
+import { isAdmin } from "../api/auth";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -17,7 +18,13 @@ export default function AdminUsers() {
     can_delete: false, 
     is_admin: false 
   });
+  const [editingRole, setEditingRole] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setUserIsAdmin(isAdmin());
+  }, []);
 
   const loadUsers = async () => {
     try {
@@ -52,12 +59,16 @@ export default function AdminUsers() {
       return;
     }
 
-    console.log('Attempting to create user:', newUser);
+    const userPayload = {
+      username: newUser.username,
+      password: newUser.password,
+      role_names: [newUser.role_names]
+    };
+    
+    console.log('Attempting to create user with payload:', userPayload);
+    console.log('API endpoint: POST /admin/users/');
+    
     try {
-      const userPayload = {
-        ...newUser,
-        role_names: [newUser.role_names] // Convert single role to array
-      };
       const response = await createUser(userPayload);
       console.log('User creation response:', response);
       setNewUser({ username: '', password: '', role_names: '' });
@@ -66,7 +77,23 @@ export default function AdminUsers() {
       alert('User created successfully');
     } catch (error) {
       console.error('Failed to create user:', error);
-      alert(`Failed to create user: ${error.response?.data?.detail || error.message}`);
+      console.error('Error response status:', error.response?.status);
+      console.error('Error response data:', error.response?.data);
+      
+      let errorMessage = 'Failed to create user';
+      
+      if (error.response?.data?.detail) {
+        if (error.response.data.detail.includes('greenlet_spawn') || 
+            error.response.data.detail.includes('sqlalche')) {
+          errorMessage = 'Database connection error. Please try again or contact administrator.';
+        } else {
+          errorMessage = error.response.data.detail;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -121,6 +148,44 @@ export default function AdminUsers() {
     }
   };
 
+  const handleEditRole = (role) => {
+    setEditingRole(role);
+    setNewRole({
+      name: role.name,
+      can_read: role.can_read,
+      can_write: role.can_write,
+      can_delete: role.can_delete,
+      is_admin: role.is_admin
+    });
+    setShowAddRoleForm(true);
+  };
+
+  const handleUpdateRole = async (e) => {
+    e.preventDefault();
+    if (!newRole.name) {
+      alert('Role name is required');
+      return;
+    }
+
+    try {
+      await updateRole(editingRole.id, newRole);
+      setEditingRole(null);
+      setNewRole({ 
+        name: '', 
+        can_read: false, 
+        can_write: false, 
+        can_delete: false, 
+        is_admin: false 
+      });
+      setShowAddRoleForm(false);
+      await loadRoles();
+      alert('Role updated successfully');
+    } catch (error) {
+      console.error('Failed to update role:', error);
+      alert(`Failed to update role: ${error.response?.data?.detail || error.message}`);
+    }
+  };
+
   const handleEditUser = (user) => {
     setEditingUser(user);
     setNewUser({ username: user.username, email: user.email, role: user.role });
@@ -155,7 +220,12 @@ export default function AdminUsers() {
     },
     {
       name: 'Role',
-      selector: row => row.role,
+      selector: row => {
+        if (row.roles && Array.isArray(row.roles)) {
+          return row.roles.map(role => role.name || role).join(', ');
+        }
+        return row.role || 'No Role';
+      },
       sortable: true,
     },
     {
@@ -175,12 +245,16 @@ export default function AdminUsers() {
           <button 
             className="btn btn-sm btn-primary"
             onClick={() => handleEditUser(row)}
+            disabled={!userIsAdmin}
+            style={{opacity: userIsAdmin ? 1 : 0.5, cursor: userIsAdmin ? 'pointer' : 'not-allowed'}}
           >
             Edit
           </button>
           <button 
             className="btn btn-sm btn-danger"
             onClick={() => handleDeleteUser(row.id)}
+            disabled={!userIsAdmin}
+            style={{opacity: userIsAdmin ? 1 : 0.5, cursor: userIsAdmin ? 'pointer' : 'not-allowed'}}
           >
             Delete
           </button>
@@ -239,10 +313,19 @@ export default function AdminUsers() {
       name: 'Actions',
       cell: row => (
         <div className="action-buttons">
-          <button className="btn btn-sm btn-primary">Edit</button>
+          <button 
+            className="btn btn-sm btn-primary"
+            onClick={() => handleEditRole(row)}
+            disabled={!userIsAdmin}
+            style={{opacity: userIsAdmin ? 1 : 0.5, cursor: userIsAdmin ? 'pointer' : 'not-allowed'}}
+          >
+            Edit
+          </button>
           <button 
             className="btn btn-sm btn-danger"
             onClick={() => handleDeleteRole(row.id)}
+            disabled={!userIsAdmin}
+            style={{opacity: userIsAdmin ? 1 : 0.5, cursor: userIsAdmin ? 'pointer' : 'not-allowed'}}
           >
             Delete
           </button>
@@ -360,7 +443,17 @@ export default function AdminUsers() {
               <h3>Roles</h3>
               <button 
                 className="btn btn-primary" 
-                onClick={() => setShowAddRoleForm(!showAddRoleForm)}
+                onClick={() => {
+                  setEditingRole(null);
+                  setNewRole({ 
+                    name: '', 
+                    can_read: false, 
+                    can_write: false, 
+                    can_delete: false, 
+                    is_admin: false 
+                  });
+                  setShowAddRoleForm(!showAddRoleForm);
+                }}
               >
                 {showAddRoleForm ? 'Cancel' : 'Add Role'}
               </button>
@@ -368,8 +461,8 @@ export default function AdminUsers() {
 
             {showAddRoleForm && (
               <div className="upload-section">
-                <h3>Add New Role</h3>
-                <form onSubmit={handleAddRole}>
+                <h3>{editingRole ? 'Edit Role' : 'Add New Role'}</h3>
+                <form onSubmit={editingRole ? handleUpdateRole : handleAddRole}>
                   <div className="form-group">
                     <input
                       className="form-control"
@@ -416,7 +509,9 @@ export default function AdminUsers() {
                       </label>
                     </div>
                   </div>
-                  <button type="submit" className="btn btn-primary">Create Role</button>
+                  <button type="submit" className="btn btn-primary">
+                    {editingRole ? 'Update Role' : 'Create Role'}
+                  </button>
                 </form>
               </div>
             )}
