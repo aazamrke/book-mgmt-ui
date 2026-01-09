@@ -7,6 +7,18 @@ const mockBooks = [
   { id: 3, title: "1984", author: "George Orwell", genre: "Dystopian", year_published: 1949 }
 ];
 
+const mockAuthors = [
+  { id: 1, name: "F. Scott Fitzgerald" },
+  { id: 2, name: "Harper Lee" },
+  { id: 3, name: "George Orwell" }
+];
+
+const mockGenres = [
+  { id: 1, name: "Fiction" },
+  { id: 2, name: "Dystopian" },
+  { id: 3, name: "Non-Fiction" }
+];
+
 let nextId = 4;
 
 const handleApiError = async (apiCall, mockResponse) => {
@@ -72,4 +84,56 @@ export const generateSummary = (id) => handleApiError(
 export const getBookSummary = (id) => handleApiError(
   () => api.get(`/books/${id}/summary`),
   { summary: 'This is a mock summary for the book.' }
+);
+
+// Author endpoints
+export const getAuthors = () => handleApiError(
+  () => api.get("/authors"),
+  mockAuthors
+);
+
+export const createAuthor = (data) => handleApiError(
+  () => api.post("/authors", data),
+  { id: Date.now(), ...data }
+);
+
+export const updateAuthor = (id, data) => handleApiError(
+  () => api.put(`/authors/${id}`, data),
+  { id, ...data }
+);
+
+export const deleteAuthor = (id) => handleApiError(
+  () => api.delete(`/authors/${id}`),
+  { message: 'Author deleted successfully' }
+);
+
+export const getDropdownAuthors = () => handleApiError(
+  () => api.get("/books/dropdown/authors"),
+  mockAuthors
+);
+
+// Genre endpoints
+export const getGenres = () => handleApiError(
+  () => api.get("/genres"),
+  mockGenres
+);
+
+export const createGenre = (data) => handleApiError(
+  () => api.post("/genres", data),
+  { id: Date.now(), ...data }
+);
+
+export const updateGenre = (id, data) => handleApiError(
+  () => api.put(`/genres/${id}`, data),
+  { id, ...data }
+);
+
+export const deleteGenre = (id) => handleApiError(
+  () => api.delete(`/genres/${id}`),
+  { message: 'Genre deleted successfully' }
+);
+
+export const getDropdownGenres = () => handleApiError(
+  () => api.get("/books/dropdown/genres"),
+  mockGenres
 );

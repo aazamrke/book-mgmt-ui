@@ -4,6 +4,7 @@ import Signup from "./auth/Signup";
 import Books from "./pages/Books";
 import AddBook from "./pages/AddBook";
 import AdminUsers from "./pages/AdminUsers";
+import AuthorGenre from "./pages/AuthorGenre";
 import Documents from "./pages/Documents";
 import Ingestion from "./pages/Ingestion";
 import RAGSearch from "./pages/RAGSearch";
@@ -31,6 +32,11 @@ function AppContent() {
         <Route path="/add-book" element={
           <ProtectedRoute><AddBook /></ProtectedRoute>
         }/>
+        
+        <Route path="/author-genre" element={
+          <ProtectedRoute><AuthorGenre /></ProtectedRoute>
+        }/>
+        
         <Route path="/admin/users" element={
   <ProtectedRoute><AdminUsers /></ProtectedRoute>
 } />

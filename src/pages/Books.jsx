@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getBooks, deleteBook, updateBook } from "../api/books";
+import { getBooks, deleteBook, updateBook, getDropdownAuthors, getDropdownGenres } from "../api/books";
 import DataTable from 'react-data-table-component';
 
 export default function Books() {
@@ -7,6 +7,8 @@ export default function Books() {
   const [loading, setLoading] = useState(true);
   const [editingBook, setEditingBook] = useState(null);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [authors, setAuthors] = useState([]);
+  const [genres, setGenres] = useState([]);
 
   const loadBooks = async () => {
     try {
@@ -20,8 +22,22 @@ export default function Books() {
     }
   };
 
+  const loadDropdownData = async () => {
+    try {
+      const [authorsRes, genresRes] = await Promise.all([
+        getDropdownAuthors(),
+        getDropdownGenres()
+      ]);
+      setAuthors(authorsRes.data);
+      setGenres(genresRes.data);
+    } catch (error) {
+      console.error('Failed to load dropdown data:', error);
+    }
+  };
+
   useEffect(() => {
     loadBooks();
+    loadDropdownData();
   }, []);
 
   const handleEdit = (book) => {
@@ -32,7 +48,14 @@ export default function Books() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await updateBook(editingBook.id, editingBook);
+      const updateData = {
+        title: editingBook.title,
+        author_id: editingBook.author_id,
+        genre_id: editingBook.genre_id,
+        year_published: editingBook.year_published,
+        summary: editingBook.summary
+      };
+      await updateBook(editingBook.id, updateData);
       setEditingBook(null);
       setShowEditForm(false);
       await loadBooks();
@@ -127,21 +150,29 @@ export default function Books() {
                 />
               </div>
               <div className="form-group">
-                <input
+                <select
                   className="form-control"
-                  placeholder="Author"
-                  value={editingBook.author}
-                  onChange={(e) => setEditingBook({...editingBook, author: e.target.value})}
+                  value={editingBook.author_id || ''}
+                  onChange={(e) => setEditingBook({...editingBook, author_id: parseInt(e.target.value)})}
                   required
-                />
+                >
+                  <option value="">Select Author</option>
+                  {authors.map(author => (
+                    <option key={author.id} value={author.id}>{author.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
-                <input
+                <select
                   className="form-control"
-                  placeholder="Genre"
-                  value={editingBook.genre}
-                  onChange={(e) => setEditingBook({...editingBook, genre: e.target.value})}
-                />
+                  value={editingBook.genre_id || ''}
+                  onChange={(e) => setEditingBook({...editingBook, genre_id: parseInt(e.target.value)})}
+                >
+                  <option value="">Select Genre</option>
+                  {genres.map(genre => (
+                    <option key={genre.id} value={genre.id}>{genre.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <input

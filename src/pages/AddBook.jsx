@@ -1,64 +1,72 @@
-import { useState } from "react";
-import { addBook } from "../api/books";
+import { useState, useEffect } from "react";
+import { addBook, getDropdownAuthors, getDropdownGenres, createAuthor, createGenre } from "../api/books";
 import { useNavigate } from "react-router-dom";
 
 export default function AddBook() {
   const [book, setBook] = useState({
     title: '',
-    author: '',
-    genre: '',
+    author_id: '',
+    genre_id: '',
     year_published: ''
   });
   const [loading, setLoading] = useState(false);
+  const [authors, setAuthors] = useState([]);
+  const [genres, setGenres] = useState([]);
   const navigate = useNavigate();
 
-  const authors = [
-    'J.K. Rowling',
-    'Stephen King',
-    'Agatha Christie',
-    'George Orwell',
-    'Jane Austen',
-    'Mark Twain',
-    'Ernest Hemingway',
-    'Charles Dickens',
-    'William Shakespeare',
-    'Harper Lee'
-  ];
-
-  const genres = [
-    'Fiction',
-    'Non-Fiction',
-    'Mystery',
-    'Romance',
-    'Science Fiction',
-    'Fantasy',
-    'Biography',
-    'History',
-    'Self-Help',
-    'Horror',
-    'Thriller',
-    'Comedy',
-    'Drama'
-  ];
+  useEffect(() => {
+    const loadDropdownData = async () => {
+      try {
+        const [authorsRes, genresRes] = await Promise.all([
+          getDropdownAuthors(),
+          getDropdownGenres()
+        ]);
+        setAuthors(authorsRes.data);
+        setGenres(genresRes.data);
+      } catch (error) {
+        console.error('Failed to load dropdown data:', error);
+      }
+    };
+    loadDropdownData();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setBook(prev => ({
       ...prev,
-      [name]: name === 'year_published' ? parseInt(value) || '' : value
+      [name]: (name === 'year_published') ? parseInt(value) || '' : 
+              (name === 'author_id' || name === 'genre_id') ? parseInt(value) || '' : value
     }));
   };
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!book.title || !book.author) {
+    if (!book.title || (!book.author_id && !book.new_author)) {
       alert('Title and Author are required');
       return;
     }
     
     setLoading(true);
     try {
-      await addBook(book);
+      let authorId = book.author_id;
+      let genreId = book.genre_id;
+      
+      if (book.author_id === 'new' && book.new_author) {
+        const authorRes = await createAuthor({ name: book.new_author });
+        authorId = authorRes.data.id;
+      }
+      
+      if (book.genre_id === 'new' && book.new_genre) {
+        const genreRes = await createGenre({ name: book.new_genre });
+        genreId = genreRes.data.id;
+      }
+      
+      await addBook({
+        title: book.title,
+        author_id: authorId,
+        genre_id: genreId,
+        year_published: book.year_published
+      });
       navigate("/books");
     } catch (error) {
       console.error('Failed to add book:', error);
@@ -88,34 +96,55 @@ export default function AddBook() {
             <label>Author *</label>
             <select 
               className="form-control"
-              name="author"
-              value={book.author}
+              name="author_id"
+              value={book.author_id}
               onChange={handleChange}
               required
             >
               <option value="">Select an author...</option>
               {authors.map((author) => (
-                <option key={author} value={author}>
-                  {author}
+                <option key={author.id} value={author.id}>
+                  {author.name}
                 </option>
               ))}
+              <option value="new">+ Add New Author</option>
             </select>
+            {book.author_id === 'new' && (
+              <input 
+                className="form-control" 
+                style={{marginTop: '10px'}}
+                placeholder="Enter new author name"
+                value={book.new_author || ''}
+                onChange={(e) => setBook({...book, new_author: e.target.value})}
+                required
+              />
+            )}
           </div>
           <div className="form-group">
             <label>Genre</label>
             <select 
               className="form-control"
-              name="genre"
-              value={book.genre}
+              name="genre_id"
+              value={book.genre_id}
               onChange={handleChange}
             >
               <option value="">Select a genre...</option>
               {genres.map((genre) => (
-                <option key={genre} value={genre}>
-                  {genre}
+                <option key={genre.id} value={genre.id}>
+                  {genre.name}
                 </option>
               ))}
+              <option value="new">+ Add New Genre</option>
             </select>
+            {book.genre_id === 'new' && (
+              <input 
+                className="form-control" 
+                style={{marginTop: '10px'}}
+                placeholder="Enter new genre name"
+                value={book.new_genre || ''}
+                onChange={(e) => setBook({...book, new_genre: e.target.value})}
+              />
+            )}
           </div>
           <div className="form-group">
             <label>Year Published</label>
