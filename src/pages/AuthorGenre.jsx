@@ -11,6 +11,9 @@ export default function AuthorGenre() {
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({ name: '' });
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const hasWritePermission = user.role?.is_admin || user.role?.permissions?.includes('write');
+
   const loadAuthors = async () => {
     try {
       const res = await getAuthors();
@@ -115,12 +118,14 @@ export default function AuthorGenre() {
           <button 
             className="btn btn-sm btn-primary"
             onClick={() => handleEdit(row)}
+            disabled={!hasWritePermission}
           >
             Edit
           </button>
           <button 
             className="btn btn-sm btn-danger"
             onClick={() => handleDelete(row.id)}
+            disabled={!hasWritePermission}
           >
             Delete
           </button>
@@ -153,7 +158,11 @@ export default function AuthorGenre() {
         <div className="tab-content">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h3>{activeTab === 'authors' ? 'Authors' : 'Genres'}</h3>
-            <button className="btn btn-primary" onClick={handleAdd}>
+            <button 
+              className="btn btn-primary" 
+              onClick={handleAdd}
+              disabled={!hasWritePermission}
+            >
               Add {activeTab === 'authors' ? 'Author' : 'Genre'}
             </button>
           </div>

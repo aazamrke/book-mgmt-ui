@@ -10,6 +10,9 @@ export default function Books() {
   const [authors, setAuthors] = useState([]);
   const [genres, setGenres] = useState([]);
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const hasWritePermission = user.role?.is_admin || user.role?.permissions?.includes('write');
+
   const loadBooks = async () => {
     try {
       const res = await getBooks();
@@ -95,12 +98,18 @@ export default function Books() {
     },
     {
       name: 'Author',
-      selector: row => row.author,
+      selector: row => {
+        const author = authors.find(a => a.id === row.author_id);
+        return author ? author.name : row.author || 'Unknown';
+      },
       sortable: true,
     },
     {
       name: 'Genre',
-      selector: row => row.genre,
+      selector: row => {
+        const genre = genres.find(g => g.id === row.genre_id);
+        return genre ? genre.name : row.genre || 'Unknown';
+      },
       sortable: true,
     },
     {
@@ -116,12 +125,14 @@ export default function Books() {
           <button 
             className="btn btn-sm btn-primary"
             onClick={() => handleEdit(row)}
+            disabled={!hasWritePermission}
           >
             Edit
           </button>
           <button 
             className="btn btn-sm btn-danger"
             onClick={() => handleDelete(row.id)}
+            disabled={!hasWritePermission}
           >
             Delete
           </button>
